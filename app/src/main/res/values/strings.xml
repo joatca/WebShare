@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Web Share</string>
+    <string name="service_select">Select which services you want to enable</string>
+    <string name="service_explain">If you select only one service, sharing to Web Share will open that service immediately. If you enable more than one, you will be asked which you want each time.</string>
 </resources>
