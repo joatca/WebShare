@@ -4,11 +4,8 @@ import android.content.Intent
 import android.net.Uri
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
-import android.util.Log
-import android.widget.Toast
 import java.net.MalformedURLException
 import java.net.URL
-import java.util.*
 import org.jetbrains.anko.*
 
 class MainActivity : AppCompatActivity() {
@@ -16,65 +13,93 @@ class MainActivity : AppCompatActivity() {
     val TAG = "MainActivity"
 
     val services: Map<String, (String) -> String> = mapOf(
-            "Facebook" to { u -> "https://www.facebook.com/sharer.php?u=${u}" },
-            "Twitter" to { u -> "https://twitter.com/home?status=${u}" },
-            "Google+" to { u -> "https://plus.google.com/share?url=${u}" },
-            "LinkedIn" to { u -> "https://www.linkedin.com/shareArticle?mini=true&url=${u}&title=&summary=&source=" }
+            "Facebook" to { u -> "https://www.facebook.com/sharer.php?u=$u" },
+            "Twitter" to { u -> "https://twitter.com/home?status=$u" },
+            "Google+" to { u -> "https://plus.google.com/share?url=$u" },
+            "LinkedIn" to { u -> "https://www.linkedin.com/shareArticle?mini=true&url=$u&title=&summary=&source=" }
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (Intent.ACTION_SEND.equals(intent.action) && intent.type != null && "text/plain".equals(intent.type)) {
-            // find the first URL
-            intent.getStringExtra(Intent.EXTRA_TEXT).splitToSequence(" ").forEach {
-                try {
-                    val url = URL(it)
-                    val uri = Uri.parse("https://www.facebook.com/sharer.php?u=${it}")
-                    val i = Intent(Intent.ACTION_VIEW)
-                    i.data = uri
-                    startActivity(i)
-                    finish()
-                }
-                catch (e : MalformedURLException) {
-                    // not a URL, oops
-                }
-            }
+            shareToWeb()
         } else {
-            //setContentView(R.layout.activity_main)
-            val vmargin = dip(5)
-            val hmargin = dip(8)
-            val checkHmartin = dip(10)
+            showMainScreen()
+        }
+    }
+
+    fun shareToWeb() {
+        // find the first URL
+        intent.getStringExtra(Intent.EXTRA_TEXT).splitToSequence(" ").forEach { word ->
+            try {
+                val url = URL(word)
+                val prefs = getPreferences(MODE_PRIVATE)
+                val enabledServices = services.filterKeys { name -> prefs.getBoolean(name, false) }.toList()
+                if (enabledServices.size == 1) {
+                    val (name, lamb) = enabledServices[0]
+                    webIntent(lamb.invoke(word))
+                }
+                else if (enabledServices.size >= 1) {
+                    val enabledNames = enabledServices.map { it.component1() }
+                    selector("", enabledNames) { i ->
+                        val(name, lamb) = enabledServices[i]
+                        webIntent(lamb.invoke(word))
+                    }
+                }
+                else {
+                    // else no services are enabled, might as well show the config screen
+                    longToast(R.string.no_services_enabled)
+                    showMainScreen()
+                }
+            } catch (e: MalformedURLException) {
+                // not a URL, oops
+            }
+        }
+    }
+
+    fun webIntent(url: String?) {
+        val uri = Uri.parse(url)
+        val i = Intent(Intent.ACTION_VIEW)
+        i.data = uri
+        startActivity(i)
+        finish()
+    }
+
+    fun showMainScreen() {
+        val vmargin = dip(5)
+        val hmargin = dip(8)
+        val checkHmargin = dip(10)
+        verticalLayout {
+            textView {
+                textResource = R.string.service_select
+                textSize = 18f
+            }.lparams(width = matchParent) {
+                verticalMargin = vmargin
+                horizontalMargin = hmargin
+            }
+            textView {
+                textResource = R.string.service_explain
+                textSize = 14f
+            }.lparams(width = matchParent) {
+                bottomMargin = vmargin
+                horizontalMargin = hmargin
+            }
             verticalLayout {
-                textView {
-                    textResource = R.string.service_select
-                    textSize = 18f
-                }.lparams(width = matchParent) {
-                    verticalMargin = vmargin
-                    horizontalMargin = hmargin
-                }
-                textView {
-                    textResource = R.string.service_explain
-                    textSize = 14f
-                }.lparams(width = matchParent) {
-                    bottomMargin = vmargin
-                    horizontalMargin = hmargin
-                }
-                verticalLayout {
-                    services.forEach {
-                        val (name, lamb) = it
-                        checkBox(name) {
-                            textSize = 18f
-                            setChecked(getPreferences(MODE_PRIVATE).getBoolean(name, false))
-                            onCheckedChange { button, b ->
-                                getPreferences(MODE_PRIVATE).edit().let { prefs ->
-                                    prefs.putBoolean(name, isChecked)
-                                    prefs.commit()
-                                }
+                val prefs = getPreferences(MODE_PRIVATE)
+                services.forEach {
+                    val (name, lamb) = it
+                    checkBox(name) {
+                        textSize = 18f
+                        setChecked(prefs.getBoolean(name, false))
+                        onCheckedChange { button, b ->
+                            getPreferences(MODE_PRIVATE).edit().let { prefs ->
+                                prefs.putBoolean(name, isChecked)
+                                prefs.commit()
                             }
-                        }.lparams(width = matchParent) {
-                            topMargin = vmargin
-                            horizontalMargin = checkHmartin
                         }
+                    }.lparams(width = matchParent) {
+                        topMargin = vmargin
+                        horizontalMargin = checkHmargin
                     }
                 }
             }

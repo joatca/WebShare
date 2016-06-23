@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Web Share</string>
-    <string name="service_select">Sélectionner les services pour activer</string>
+    <string name="service_select">Partager sans applis natives</string>
+    <string name="service_explain">Pour partager directement à un service, ne qu\'activer une. Activer plus qu\'une pour un menu chaque fois.</string>
+    <string name="no_services_enabled">Veuiller activer au moins une service</string>
 </resources>
