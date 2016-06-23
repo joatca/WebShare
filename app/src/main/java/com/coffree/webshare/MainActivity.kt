@@ -32,7 +32,7 @@ class MainActivity : AppCompatActivity() {
 
     val services: Map<String, (String) -> String> = mapOf(
             "Facebook" to { u -> "https://www.facebook.com/sharer.php?u=$u" },
-            "Twitter" to { u -> "https://twitter.com/home?status=$u" },
+            "Twitter" to { u -> "https://twitter.com/intent/tweet?text=$u" },
             "Google+" to { u -> "https://plus.google.com/share?url=$u" },
             "LinkedIn" to { u -> "https://www.linkedin.com/shareArticle?mini=true&url=$u&title=&summary=&source=" }
     )
