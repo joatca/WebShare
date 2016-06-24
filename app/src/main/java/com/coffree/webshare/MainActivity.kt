@@ -25,16 +25,18 @@ import android.os.Bundle
 import java.net.MalformedURLException
 import java.net.URL
 import org.jetbrains.anko.*
+import java.util.*
 
 class MainActivity : AppCompatActivity() {
 
     val TAG = "MainActivity"
 
-    val services: Map<String, (String) -> String> = mapOf(
-            "Facebook" to { u -> "https://www.facebook.com/sharer.php?u=$u" },
-            "Twitter" to { u -> "https://twitter.com/intent/tweet?text=$u" },
-            "Google+" to { u -> "https://plus.google.com/share?url=$u" },
-            "LinkedIn" to { u -> "https://www.linkedin.com/shareArticle?mini=true&url=$u&title=&summary=&source=" }
+    val services: Map<String, (String, String) -> String> = mapOf(
+            "Facebook" to { u, t -> "https://www.facebook.com/sharer.php?u=$u" }, // FB only takes the link
+            "Twitter" to { u, t -> "https://twitter.com/intent/tweet?text=$t${Uri.encode(" ")}$u" }, // Twitter can take all the text
+            "Google+" to { u, t -> "https://plus.google.com/share?url=$u" }, // G+ also only takes the link
+            "Reddit" to { u, t -> "https://www.reddit.com/submit?url=$u&title=$t"}, // Reddit can take a title
+            "LinkedIn" to { u, t -> "https://www.linkedin.com/shareArticle?mini=true&url=$u&title=$t&summary=&source=" }
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,31 +49,39 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun shareToWeb() {
-        // find the first URL
+        // find first URL and other non-URL words
+        var url: String = ""
+        var words = ArrayList<String>()
         intent.getStringExtra(Intent.EXTRA_TEXT).splitToSequence(" ").forEach { word ->
-            try {
-                val url = URL(word)
-                val prefs = getPreferences(MODE_PRIVATE)
-                val enabledServices = services.filterKeys { name -> prefs.getBoolean(name, false) }.toList()
-                if (enabledServices.size == 1) {
-                    val (name, lamb) = enabledServices[0]
-                    webIntent(lamb.invoke(word))
+            if (url.length == 0) {
+                try {
+                    val urlObject = URL(word)
+                    url = word
+                } catch (e: MalformedURLException) {
+                    words.add(word)
                 }
-                else if (enabledServices.size >= 1) {
-                    val enabledNames = enabledServices.map { it.component1() }
-                    selector("", enabledNames) { i ->
-                        val(name, lamb) = enabledServices[i]
-                        webIntent(lamb.invoke(word))
-                    }
-                }
-                else {
-                    // else no services are enabled, might as well show the config screen
-                    longToast(R.string.no_services_enabled)
-                    showMainScreen()
-                }
-            } catch (e: MalformedURLException) {
-                // not a URL, oops
+            } else {
+                words.add(word)
             }
+        }
+        val text = Uri.encode(words.joinToString(separator = " "))
+        val prefs = getPreferences(MODE_PRIVATE)
+        val enabledServices = services.filterKeys { name -> prefs.getBoolean(name, false) }.toList()
+        if (enabledServices.size == 1) {
+            val (name, lamb) = enabledServices[0]
+            webIntent(lamb.invoke(url, text))
+        }
+        else if (enabledServices.size >= 1) {
+            val enabledNames = enabledServices.map { it.component1() }
+            selector("", enabledNames) { i ->
+                val(name, lamb) = enabledServices[i]
+                webIntent(lamb.invoke(url, text))
+            }
+        }
+        else {
+            // else no services are enabled, might as well show the config screen
+            longToast(R.string.no_services_enabled)
+            showMainScreen()
         }
     }
 
